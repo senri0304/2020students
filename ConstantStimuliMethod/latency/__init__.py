@@ -55,19 +55,6 @@ def fixation():
                     int(sz / 2) + eccentricity + f * 3, int(sz / 2) + eccentricity - f),
                    fill=(0, 0, 255), outline=None)
 
-# Generate stereograms
-for i in variation:
-    for j in variation2:
-        img = Image.new("RGB", (sz, sz), (lb, lb, lb))
-        draw = ImageDraw.Draw(img)
-        draw.rectangle((int(sz / 2) - int(f / 2) + int(f*i)*j, int(sz / 2) + int(ll / 2),
-                        int(sz / 2) + int(f / 2) + int(f*i)*j, int(sz / 2) - int(ll / 2)),
-                       fill=(0, 0, 0), outline=None)
-
-        fixation()
-
-        basename = os.path.basename(str(i) + 'ls' + str(j) + '.png')
-        img.save(os.path.join(to_dir, basename), quality=100)
 
 # ls
 img = Image.new("RGB", (sz, sz), (lb, lb, lb))
@@ -75,55 +62,33 @@ draw = ImageDraw.Draw(img)
 
 draw.rectangle((int(sz / 2) - int(f / 2), int(sz / 2) + int(ll / 2),
                 int(sz / 2) + int(f / 2), int(sz / 2) - int(ll / 2)),
-               fill=(lb*2, lb, lb), outline=None)
+               fill=(lb, 0, 0), outline=None)
 
 fixation()
 
-basename = os.path.basename('ls1.png')
-img.save(os.path.join(to_dir, basename), quality=100)
-
-basename = os.path.basename('ls-1.png')
+basename = os.path.basename('test.png')
 img.save(os.path.join(to_dir, basename), quality=100)
 
 
-to_dir = 'stereograms2'
-os.makedirs(to_dir, exist_ok=True)
-v2 = [0.5, 1, 2, 4]
-# Generate stereograms
-for i in v2:
-
-    img = Image.new("RGB", (sz, sz), (lb, lb, lb))
-    draw = ImageDraw.Draw(img)
-    draw.rectangle((int(sz / 2) - int(ll / 2)*i, int(sz / 2) + int(f / 2),
-                    int(sz / 2) + int(ll / 2)*i, int(sz / 2) - int(f / 2)),
-                    fill=(0, 0, 0), outline=None)
-
-    fixation()
-
-    basename = os.path.basename(str(i) + 'ls.png')
-    img.save(os.path.join(to_dir, basename), quality=100)
-
-# ls
 img = Image.new("RGB", (sz, sz), (lb, lb, lb))
 draw = ImageDraw.Draw(img)
 
-draw.rectangle((int(sz / 2) - int(f / 2), int(sz / 2) + int(ll / 2),
-                int(sz / 2) + int(f / 2), int(sz / 2) - int(ll / 2)),
-               fill=(lb+30, lb-15, lb-15), outline=None)
+draw.rectangle((int(sz / 2) - int(ll / 2), int(sz / 2) + int(f / 2),
+                int(sz / 2) + int(ll / 2), int(sz / 2) - int(f / 2)),
+               fill=(0, 0, 0), outline=None)
 
 fixation()
+
 
 basename = os.path.basename('ls.png')
 img.save(os.path.join(to_dir, basename), quality=100)
+
 
 # stereogram without stimuli
 img = Image.new("RGB", (sz, sz), (lb, lb, lb))
 draw = ImageDraw.Draw(img)
 
 fixation()
-
-basename = os.path.basename('0ls.png')
-img.save(os.path.join(to_dir, basename), quality=100)
 
 to_dir = 'materials'
 os.makedirs(to_dir, exist_ok=True)
