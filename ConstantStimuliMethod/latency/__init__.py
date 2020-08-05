@@ -62,7 +62,7 @@ draw = ImageDraw.Draw(img)
 
 draw.rectangle((int(sz / 2) - int(f / 2), int(sz / 2) + int(ll / 2),
                 int(sz / 2) + int(f / 2), int(sz / 2) - int(ll / 2)),
-               fill=(lb, 0, 0), outline=None)
+               fill=(int(lb*1.5), 0, 0), outline=None)
 
 fixation()
 
