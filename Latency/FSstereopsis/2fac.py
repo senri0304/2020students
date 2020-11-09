@@ -9,7 +9,7 @@ import display_info
 
 # Prefernce
 # ------------------------------------------------------------------------
-rept = 1
+rept = 20
 exclude_mousePointer = False
 duration = 0.4
 # ------------------------------------------------------------------------
@@ -30,9 +30,10 @@ dat = pd.DataFrame()
 iso = 8.0
 draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
-response = []  # Count transients
+Latency = []  # Count transients
 trial_times = []
-exitance = True
+exit = True
+oneshot = True
 n = 0
 
 # Load resources
@@ -59,19 +60,18 @@ print(sequence2)
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exitance, trial_start, latency
-        if exitance is False and symbol == key.LEFT: # target in visible
-            response.append(1)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
-            response.append(0)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+        global exit, trial_start, kd, oneshot
+        if exit is False and oneshot and symbol == key.DOWN: # target in invisible
+            kd = time.time()
+            pyglet.clock.schedule_once(get_results, 0.4)
+            oneshot = False
+            delete()
+        if exit and oneshot and symbol == key.UP:
             p_sound.play()
-            pyglet.clock.schedule_once(success, latency)
-            pyglet.clock.schedule_once(delete, duration + latency)
-            replace()
+            pyglet.clock.schedule_once(replace, 0.4)
+#            pyglet.clock.schedule_once(delete, duration + latency + 0.4)
             trial_start = time.time()
+            oneshot = False
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
@@ -85,20 +85,28 @@ def fixer():
     draw_objects.append(fixr)
 
 
-def replace():
+def replace(dt):
+    global oneshot, exit, present
 #    del draw_objects[:]
     fixer()
+    pyglet.clock.schedule_once(success, latency)
     draw_objects.append(preceeder)
+    present = time.time()
+    exit = False
+    oneshot = True
 
 
 def success(dt):
-    draw_objects.append(successor)
+    if exit is False:
+        draw_objects.append(successor)
+    else:
+        pass
 
 
 # A end routine function
 def exit_routine():
-    global exitance
-    exitance = True
+    global exit
+    exit = True
     beep_sound.play()
     prepare_routine()
     pyglet.app.exit()
@@ -114,23 +122,24 @@ def on_draw():
 
 
 # Remove stimulus
-def delete(dt):
-    global n, trial_end, exitance
+def delete():
+    global n, trial_end
     del draw_objects[:]
     fixer()
     p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
 
 
 def get_results(dt):
-    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names
+    global kd, n, response, trial_end, trial_start, sequence, file_names, Latency
     trial_time = trial_end - trial_start
     trial_times.append(trial_time)
+    l = kd - present - latency
+    Latency.append(l)
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
+    print('latency: ' + str(l))
     print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
@@ -173,11 +182,9 @@ latency = sequence[0]
 
 
 for i in sequence:
-    tc = 0  # Count transients
-    ku = deque([])  # Store unix time when key up
     kd = deque([])  # Store unix time when key down
-    kud = []  # Differences between kd and ku
-
+    oneshot = True
+    present = 0
     pyglet.app.run()
 
 # -------------- End loop -------------------------------
@@ -192,7 +199,7 @@ daten = datetime.datetime.now()
 results = pd.DataFrame({'trial': list(range(1, len(file_names)+1)),  # Store variance_A conditions
                         'cnd': sequence,
                         'stimulated_eye': sequence2,
-                        'response': response, # Store transient_counts
+                        'latency': Latency, # Store transient_counts
                         'trial_times': trial_times})
 
 os.makedirs('data', exist_ok=True)

@@ -32,7 +32,7 @@ draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
 response = []  # Count transients
 trial_times = []
-exitance = True
+exit = True
 n = 0
 
 # Load resources
@@ -72,14 +72,14 @@ random.seed(r)
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exitance, trial_start, latency
-        if exitance is False and symbol == key.LEFT: # target in visible
+        global tc, exit, trial_start, latency
+        if exit is False and symbol == key.LEFT: # target in visible
             response.append(1)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
+        if exit is False and symbol == key.RIGHT: # target in invisible
             response.append(0)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+        if exit and symbol == key.UP:
             p_sound.play()
             pyglet.clock.schedule_once(success, latency)
             pyglet.clock.schedule_once(delete, duration + latency)
@@ -110,8 +110,8 @@ def success(dt):
 
 # A end routine function
 def exit_routine():
-    global exitance
-    exitance = True
+    global exit
+    exit = True
     beep_sound.play()
     prepare_routine()
     pyglet.app.exit()
@@ -128,13 +128,13 @@ def on_draw():
 
 # Remove stimulus
 def delete(dt):
-    global n, trial_end, exitance
+    global n, trial_end, exit
     del draw_objects[:]
     fixer()
     p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
+    exit = False
 
 
 def get_results(dt):

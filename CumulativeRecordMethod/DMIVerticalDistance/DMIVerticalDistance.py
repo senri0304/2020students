@@ -36,7 +36,7 @@ kud_list = []  # Store durations of key pressed
 cdt = []  # Store sum(kud), cumulative reaction time on a trial.
 mdt = []
 dtstd = []
-exitance = True
+exit = True
 n = 0
 
 # Load resources
@@ -55,7 +55,7 @@ print(sequence)
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exitance, trial_start
+        global tc, exit, trial_start
         if exitance == False and symbol == key.DOWN:
             kd.append(time.time())
             tc = tc + 1
@@ -71,7 +71,7 @@ class key_resp(object):
 
     def on_key_release(self, symbol, modifiers):
         global tc
-        if exitance == False and symbol == key.DOWN:
+        if exit == False and symbol == key.DOWN:
             ku.append(time.time())
             tc = tc + 1
 
@@ -94,7 +94,7 @@ def replace():
 
 # A end routine function
 def exit_routine(dt):
-    global exitance
+    global exit
     exitance = True
     beep_sound.play()
     prepare_routine()

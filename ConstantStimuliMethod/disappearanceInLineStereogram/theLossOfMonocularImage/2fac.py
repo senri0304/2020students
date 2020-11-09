@@ -9,9 +9,9 @@ import display_info
 
 # Prefernce
 # ------------------------------------------------------------------------
-rept = 1
+rept = 20
 exclude_mousePointer = False
-duration = 3
+duration = 0.4
 # ------------------------------------------------------------------------
 
 # Get display information
@@ -32,7 +32,8 @@ draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
 response = []  # Count transients
 trial_times = []
-exitance = True
+exit = True
+oneshot = True
 n = 0
 
 # Load resources
@@ -59,19 +60,22 @@ print(sequence2)
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exitance, trial_start, latency
-        if exitance is False and symbol == key.LEFT: # target in visible
+        global tc, exit, trial_start, latency, oneshot
+        if exit is False and oneshot and symbol == key.LEFT: # target in visible
             response.append(1)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
+            oneshot = False
+        if exit is False and oneshot and symbol == key.RIGHT: # target in invisible
             response.append(0)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+            oneshot = False
+        if exit and oneshot and symbol == key.UP:
             p_sound.play()
             pyglet.clock.schedule_once(success, latency)
             pyglet.clock.schedule_once(delete, duration + latency)
             replace()
             trial_start = time.time()
+            oneshot = False
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
@@ -97,8 +101,8 @@ def success(dt):
 
 # A end routine function
 def exit_routine():
-    global exitance
-    exitance = True
+    global exit
+    exit = True
     beep_sound.play()
     prepare_routine()
     pyglet.app.exit()
@@ -115,27 +119,29 @@ def on_draw():
 
 # Remove stimulus
 def delete(dt):
-    global n, trial_end, exitance
+    global n, trial_end, exit, oneshot
     del draw_objects[:]
     fixer()
     p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
+    exit = False
+    oneshot = True
 
 
 def get_results(dt):
-    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names
+    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names, oneshot
     trial_time = trial_end - trial_start
     trial_times.append(trial_time)
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
+    print('response: ' + str(response[n-1]))
     print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
     if n != len(file_names):
         exit_routine()
+        oneshot = True
     else:
         pyglet.app.exit()
 

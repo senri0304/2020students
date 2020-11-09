@@ -5,6 +5,7 @@ import os, pyglet, wave, struct
 import numpy as np
 from PIL import Image, ImageDraw
 from display_info import *
+import variables
 
 to_dir = 'stereograms'
 os.makedirs(to_dir, exist_ok=True)
@@ -15,23 +16,11 @@ size = 5
 # Input line size in cm unit
 line_length = 0.7  # 30pix is 42 min of arc on 57cm distance
 
-# Input a number you like to initiate
-s = 1
-
 # Input luminance of background
 lb = 85  # 215, 84%
 
 # Input fixation point position in cm unit
 ecc = 1
-
-# Get display information
-display = pyglet.canvas.get_display()
-screens = display.get_screens()
-
-resolution = screens[len(screens) - 1].height
-
-c = (aspect_width ** 2 + aspect_height ** 2) ** 0.5
-d_height = 2.54 * (aspect_height / c) * inch
 
 sz = round(resolution * (size / d_height))
 ll = round(resolution * line_length / d_height)
@@ -41,9 +30,6 @@ f = round(sz * 0.023 / 2)  # 3.6 min of arc in 5 deg presentation area, actually
 disparity = f*4
 
 eccentricity = round(1 / np.sqrt(2.0) * ecc / d_height * resolution)
-
-# array of variable 2
-variation2 = list(np.repeat([1, -1], len(variation)))
 
 
 # fixation point
@@ -60,9 +46,9 @@ def fixation():
 img = Image.new("RGB", (sz, sz), (lb, lb, lb))
 draw = ImageDraw.Draw(img)
 
-draw.rectangle((int(sz / 2) - int(f / 2), int(sz / 2) + int(ll / 2),
-                int(sz / 2) + int(f / 2), int(sz / 2) - int(ll / 2)),
-               fill=(0, 0, 0), outline=None)
+draw.rectangle((int(sz / 2) - int(ll / 2), int(sz / 2) + int(f / 4),
+                int(sz / 2) + int(ll / 2), int(sz / 2) - int(f / 4)),
+               fill=(int(lb*1.5), 0, 0), outline=None)
 
 fixation()
 
@@ -70,23 +56,33 @@ basename = os.path.basename('test.png')
 img.save(os.path.join(to_dir, basename), quality=100)
 
 
-def disparate(d, name):
+def disparate(d, d2, name):
     global img, draw
     img = Image.new("RGB", (sz, sz), (lb, lb, lb))
     draw = ImageDraw.Draw(img)
 
-    draw.rectangle((int(sz / 2) - int(f / 2) + d, int(sz / 2) + int(ll / 2),
-                    int(sz / 2) + int(f / 2) + d, int(sz / 2) - int(ll / 2)),
+    draw.rectangle((int(sz / 2) - int(ll / 2) + int(f*(d/2)), int(sz / 2) + int(f / 2),
+                    int(sz / 2) + int(ll / 2) + int(f*(d/2)), int(sz / 2) - int(f / 2)),
+                   fill=(int(lb*1.5), 0, 0), outline=None)
+
+    draw.rectangle((int(sz / 2) - int(ll / 2) + int(f*(d2/2)), int(sz / 2) + int(f / 2) + f*4,
+                    int(sz / 2) + int(ll / 2) + int(f*(d2/2)), int(sz / 2) - int(f / 2) + f*4),
+                   fill=(0, 0, 0), outline=None)
+    draw.rectangle((int(sz / 2) - int(ll / 2) + int(f*(d2/2)), int(sz / 2) + int(f / 2) - f*4,
+                    int(sz / 2) + int(ll / 2) + int(f*(d2/2)), int(sz / 2) - int(f / 2) - f*4),
                    fill=(0, 0, 0), outline=None)
 
     fixation()
 
-    basename = os.path.basename(str(disparity) + 'ls' + str(name) + '.png')
+    basename = os.path.basename(str(int(np.sqrt(d**2))) + str(d2) + 'ls' + str(name) + '.png')
     img.save(os.path.join(to_dir, basename), quality=100)
 
 
-disparate(disparity, -1)
-disparate(-disparity, 1)
+for i in variables.variation:
+    disparate(0, i, 'L')
+    disparate(0, -i, 'R')
+    disparate(4, i, 'L')
+    disparate(-4, -i, 'R')
 
 
 # stereogram without stimuli
@@ -99,6 +95,26 @@ to_dir = 'materials'
 os.makedirs(to_dir, exist_ok=True)
 basename = os.path.basename('pedestal.png')
 img.save(os.path.join(to_dir, basename), quality=100)
+
+
+def disparity_matcher(d, name):
+    global img, draw
+    img = Image.new("RGB", (sz, sz), (lb, lb, lb))
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle((int(sz / 2) - int(ll / 2) + int(f*d/2), int(sz / 2) + int(f / 2),
+                    int(sz / 2) + int(ll / 2) + int(f*d/2), int(sz / 2) - int(f / 2)),
+                   fill=(int(lb*1.5), 0, 0), outline=None)
+
+    fixation()
+
+    basename = os.path.basename(str(d) + 'ls' + name + '.png')
+    img.save(os.path.join(to_dir, basename), quality=100)
+
+
+for i in variables.variation2:
+    disparity_matcher(i, 'L')
+    disparity_matcher(-i, 'R')
 
 # sound files
 # special thank: @kinaonao  https://qiita.com/kinaonao/items/c3f2ef224878fbd232f5

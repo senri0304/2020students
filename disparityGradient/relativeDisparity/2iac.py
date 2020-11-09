@@ -5,13 +5,13 @@ from pyglet.image import AbstractImage
 from collections import deque
 import pandas as pd
 import numpy as np
-import display_info
+import variables, display_info
 
 # Prefernce
 # ------------------------------------------------------------------------
-rept = 1
+rept = 10
 exclude_mousePointer = False
-duration = 0.4
+duration = 1
 # ------------------------------------------------------------------------
 
 # Get display information
@@ -32,7 +32,8 @@ draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
 response = []  # Count transients
 trial_times = []
-exitance = True
+exit = True
+oneshot = True
 n = 0
 
 # Load resources
@@ -42,36 +43,51 @@ pedestal: AbstractImage = pyglet.image.load('materials/pedestal.png')
 fixr = pyglet.sprite.Sprite(pedestal, x=cntx+iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 fixl = pyglet.sprite.Sprite(pedestal, x=cntx-iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 
-file_names = list(np.repeat(display_info.variation, rept))
-pres_lr = list(np.repeat([1, -1], len(file_names)))
-file_names *= 2
+depth_match = copy.copy(variables.variation2)  #list(np.repeat(variables.variation2, len(variables.variation)))
+depth_match *= len(variables.variation)*len(variables.variation3)
+file_names = list(np.repeat(variables.variation, len(variables.variation2)))
+file_names *= len(variables.variation3)
+tar_depth = list(np.repeat(variables.variation3, len(file_names)/2))
 
+depth_match *= rept
+file_names *= rept
+tar_depth *= rept
 
 r = random.randint(0, math.factorial(len(file_names)))
 random.seed(r)
 sequence = random.sample(file_names, len(file_names))
 random.seed(r)
-sequence2 = random.sample(pres_lr, len(file_names))
+sequence2 = random.sample(depth_match, len(file_names))
+random.seed(r)
+sequence3 = random.sample(tar_depth, len(file_names))
 
 print(sequence)
 print(sequence2)
+print(sequence3)
 
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exitance, trial_start, latency
-        if exitance is False and symbol == key.LEFT: # target in visible
+        global exit, trial_start, oneshot
+        if exit is False and oneshot and symbol == key.LEFT: # target in visible
             response.append(1)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
+            delete()
+            get_results()
+            exit = True
+            oneshot = False
+        if exit is False and oneshot and symbol == key.RIGHT: # target in invisible
             response.append(0)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+            delete()
+            get_results()
+            exit = True
+            oneshot = False
+        if exit and oneshot and symbol == key.UP:
             p_sound.play()
-            pyglet.clock.schedule_once(success, latency)
-            pyglet.clock.schedule_once(delete, duration + latency)
+            pyglet.clock.schedule_once(fix, duration)
+            pyglet.clock.schedule_once(success, duration + 0.5)
             replace()
             trial_start = time.time()
+            oneshot = False
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
@@ -86,22 +102,31 @@ def fixer():
 
 
 def replace():
-#    del draw_objects[:]
     fixer()
     draw_objects.append(preceeder)
-
-
-def success(dt):
     draw_objects.append(successor)
 
 
+def fix(dt):
+    del draw_objects[:]
+    fixer()
+
+
+def success(dt):
+    global exit, oneshot
+    draw_objects.append(dmL)
+    draw_objects.append(dmR)
+    exit = False
+    oneshot = True
+
+
 # A end routine function
-def exit_routine():
-    global exitance
-    exitance = True
-    beep_sound.play()
-    prepare_routine()
-    pyglet.app.exit()
+#def exit_routine():
+#    global exit
+#    exit = True
+#    beep_sound.play()
+#    prepare_routine()
+#    pyglet.app.exit()
 
 
 @win.event
@@ -114,51 +139,60 @@ def on_draw():
 
 
 # Remove stimulus
-def delete(dt):
-    global n, trial_end, exitance
+def delete():
+    global n, trial_end, oneshot
     del draw_objects[:]
     fixer()
-    p_sound.play()
+#    p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
+    beep_sound.play()
+    prepare_routine()
+    pyglet.app.exit()
 
 
-def get_results(dt):
-    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names
+def get_results():
+    global trial_end, trial_start
     trial_time = trial_end - trial_start
     trial_times.append(trial_time)
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
-    print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
+    print('response: ' + str(response[n-1]))
+    print('condition: ' + str(sequence3[n-1]) + ',' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
-    if n != len(file_names):
-        exit_routine()
-    else:
-        pyglet.app.exit()
+#    if n != len(file_names):
+#        exit_routine()
+#    else:
+#        pyglet.app.exit()
 
 
-def set_polygon(lr):
-    global successor, preceeder, sequence, n
+def set_polygon(d, v, v2):
+    global successor, preceeder, dmL, dmR
     # Set up polygon for stimulus
-    successor = pyglet.resource.image('stereograms/8ls' + str(lr) + '.png')
+    successor = pyglet.resource.image('stereograms/' + str(d) + str(v) + 'lsL.png')
     successor = pyglet.sprite.Sprite(successor)
-    successor.x = cntx + deg1 * iso * lr - successor.width / 2.0
+    successor.x = cntx - deg1 * iso - successor.width / 2.0
     successor.y = cnty - successor.height / 2.0
-    preceeder = pyglet.resource.image('stereograms/test.png')
+    preceeder = pyglet.resource.image('stereograms/' + str(d) + str(-v) + 'lsR.png')
     preceeder = pyglet.sprite.Sprite(preceeder)
-    preceeder.x = cntx - deg1 * iso * lr - preceeder.width / 2.0
+    preceeder.x = cntx + deg1 * iso - preceeder.width / 2.0
     preceeder.y = cnty - preceeder.height / 2.0
+
+    dmL = pyglet.resource.image('materials/' + str(v2) + 'lsL.png')
+    dmL = pyglet.sprite.Sprite(dmL)
+    dmL.x = cntx + deg1 * iso - dmL.width / 2.0
+    dmL.y = cnty - dmL.height / 2.0
+    dmR = pyglet.resource.image('materials/' + str(-v2) + 'lsR.png')
+    dmR = pyglet.sprite.Sprite(dmR)
+    dmR.x = cntx - deg1 * iso - dmR.width / 2.0
+    dmR.y = cnty - dmR.height / 2.0
 
 
 def prepare_routine():
-    global n, file_names, latency
     if n < len(file_names):
         fixer()
-        set_polygon(sequence2[n])
-        latency = sequence[n]
+        set_polygon(sequence3[n], sequence[n], sequence2[n])
     else:
         pass
 
@@ -168,16 +202,11 @@ start = time.time()
 win.push_handlers(resp_handler)
 
 fixer()
-set_polygon(sequence2[0])
-latency = sequence[0]
+set_polygon(sequence3[0], sequence[0], sequence2[0])
 
 
 for i in sequence:
-    tc = 0  # Count transients
-    ku = deque([])  # Store unix time when key up
-    kd = deque([])  # Store unix time when key down
-    kud = []  # Differences between kd and ku
-
+    oneshot = True
     pyglet.app.run()
 
 # -------------- End loop -------------------------------
