@@ -12,6 +12,7 @@ import display_info
 rept = 20
 exclude_mousePointer = False
 duration = 0.4
+latency = 1.5
 # ------------------------------------------------------------------------
 
 # Get display information
@@ -59,14 +60,14 @@ print(sequence2)
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exit, trial_start, latency
-        if exitance is False and symbol == key.LEFT: # target in visible
+        global tc, exit, trial_start
+        if exit is False and symbol == key.LEFT: # target in visible
             response.append(1)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
+        if exit is False and symbol == key.RIGHT: # target in invisible
             response.append(0)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+        if exit and symbol == key.UP:
             p_sound.play()
             pyglet.clock.schedule_once(success, latency)
             pyglet.clock.schedule_once(delete, duration + latency)
@@ -98,7 +99,7 @@ def success(dt):
 # A end routine function
 def exit_routine():
     global exit
-    exitance = True
+    exit = True
     beep_sound.play()
     prepare_routine()
     pyglet.app.exit()
@@ -121,7 +122,7 @@ def delete(dt):
     p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
+    exit = False
 
 
 def get_results(dt):
@@ -130,7 +131,7 @@ def get_results(dt):
     trial_times.append(trial_time)
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
+    print('response: ' + str(response[n-1]))
     print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
@@ -140,10 +141,10 @@ def get_results(dt):
         pyglet.app.exit()
 
 
-def set_polygon(lr):
-    global successor, preceeder, sequence, n
+def set_polygon(seq, lr):
+    global successor, preceeder
     # Set up polygon for stimulus
-    successor = pyglet.resource.image('stereograms/ls.png')
+    successor = pyglet.resource.image('stereograms/' + str(seq) + 'ls.png')
     successor = pyglet.sprite.Sprite(successor)
     successor.x = cntx + deg1 * iso * lr - successor.width / 2.0
     successor.y = cnty - successor.height / 2.0
@@ -154,11 +155,10 @@ def set_polygon(lr):
 
 
 def prepare_routine():
-    global n, file_names, latency
+    global n, file_names
     if n < len(file_names):
         fixer()
-        set_polygon(sequence2[n])
-        latency = sequence[n]
+        set_polygon(sequence[n], sequence2[n])
     else:
         pass
 
@@ -168,8 +168,7 @@ start = time.time()
 win.push_handlers(resp_handler)
 
 fixer()
-set_polygon(sequence2[0])
-latency = sequence[0]
+set_polygon(sequence[0], sequence2[0])
 
 
 for i in sequence:
