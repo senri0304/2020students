@@ -7,7 +7,7 @@
 #List up files
 files <- list.files('ConstantStimuliMethod/disappearanceInLineStereogram/theLossOfMonocularImage/data',full.names=T)
 # remove ty who binocular unbalanced and es16 who measured in uncorrect setting
-files <- files[-c(1, 5)]
+files <- files[-c(1, 6)]
 
 f <- length(files)
 
