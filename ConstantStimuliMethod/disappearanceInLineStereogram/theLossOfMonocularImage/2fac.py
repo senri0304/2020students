@@ -11,8 +11,7 @@ import display_info
 # ------------------------------------------------------------------------
 rept = 20
 exclude_mousePointer = False
-duration = 0.5
-latency = 0.5
+duration = 0.4
 # ------------------------------------------------------------------------
 
 # Get display information
@@ -28,12 +27,13 @@ deg1 = display_info.deg1
 cntx = screens[len(screens)-1].width / 2  # Store center of screen about x position
 cnty = screens[len(screens)-1].height / 3  # Store center of screen about y position
 dat = pd.DataFrame()
-iso = 8
+iso = 8.0
 draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
 response = []  # Count transients
 trial_times = []
 exit = True
+oneshot = True
 n = 0
 
 # Load resources
@@ -43,48 +43,39 @@ pedestal: AbstractImage = pyglet.image.load('materials/pedestal.png')
 fixr = pyglet.sprite.Sprite(pedestal, x=cntx+iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 fixl = pyglet.sprite.Sprite(pedestal, x=cntx-iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 
-#file_names = str(copy.copy(display_info.variation))#*rept*2)
-#file_names.append([""]*rept)
+file_names = list(np.repeat(display_info.variation, rept))
+pres_lr = list(np.repeat([1, -1], len(file_names)))
+file_names *= 2
 
-#file_names = ["0", "1", "2", "3", "4", "5", "", "", "", "", "", ""]*rept
-#v2 = ["", "", "", "", "", "","0", "1", "2", "3", "4", "5"]*rept
-
-pres_lr = list(np.repeat([1, -1], rept*4))
-file_names = list(np.repeat(["0.5", "1", "2", "4"], rept*2))
-pres_lr = pres_lr*2
-file_names = file_names*2
-#pres = list(np.repeat([1, 0], len(file_names)))
-
-print(file_names)
-print(pres_lr)
-#print(pres)
 
 r = random.randint(0, math.factorial(len(file_names)))
 random.seed(r)
 sequence = random.sample(file_names, len(file_names))
 random.seed(r)
 sequence2 = random.sample(pres_lr, len(file_names))
-random.seed(r)
-#sequence3 = random.sample(pres, len(file_names))
 
-# ----------- Core program following ----------------------------
+print(sequence)
+print(sequence2)
 
 # A getting key response function
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
-        global tc, exit, trial_start
-        if exitance is False and symbol == key.LEFT: # target in visible
+        global tc, exit, trial_start, latency, oneshot
+        if exit is False and oneshot and symbol == key.LEFT: # target in visible
             response.append(1)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
+            oneshot = False
+        if exit is False and oneshot and symbol == key.RIGHT: # target in invisible
             response.append(0)
             pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+            oneshot = False
+        if exit and oneshot and symbol == key.UP:
             p_sound.play()
             pyglet.clock.schedule_once(success, latency)
             pyglet.clock.schedule_once(delete, duration + latency)
             replace()
             trial_start = time.time()
+            oneshot = False
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
@@ -111,7 +102,7 @@ def success(dt):
 # A end routine function
 def exit_routine():
     global exit
-    exitance = True
+    exit = True
     beep_sound.play()
     prepare_routine()
     pyglet.app.exit()
@@ -128,50 +119,52 @@ def on_draw():
 
 # Remove stimulus
 def delete(dt):
-    global n, trial_end, exit
+    global n, trial_end, exit, oneshot
     del draw_objects[:]
     fixer()
     p_sound.play()
     n += 1
     trial_end = time.time()
-    exitance = False
+    exit = False
+    oneshot = True
 
 
 def get_results(dt):
-    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names
+    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names, oneshot
     trial_time = trial_end - trial_start
     trial_times.append(trial_time)
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
+    print('response: ' + str(response[n-1]))
     print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
-#    print('correct: ' + str(sequence3[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
     if n != len(file_names):
         exit_routine()
+        oneshot = True
     else:
         pyglet.app.exit()
 
 
-def set_polygon(lr, p):
+def set_polygon(lr):
     global successor, preceeder, sequence, n
     # Set up polygon for stimulus
-    successor = pyglet.resource.image('stereograms2/' + str(sequence[n]) + 'ls.png')
+    successor = pyglet.resource.image('stereograms/8ls' + str(lr) + '.png')
     successor = pyglet.sprite.Sprite(successor)
     successor.x = cntx + deg1 * iso * lr - successor.width / 2.0
     successor.y = cnty - successor.height / 2.0
-    preceeder = pyglet.resource.image('stereograms2/ls.png')
+    preceeder = pyglet.resource.image('stereograms/test.png')
     preceeder = pyglet.sprite.Sprite(preceeder)
-    preceeder.x = cntx - deg1 * iso * lr + 2000*p - preceeder.width / 2.0
+    preceeder.x = cntx - deg1 * iso * lr - preceeder.width / 2.0
     preceeder.y = cnty - preceeder.height / 2.0
 
 
 def prepare_routine():
-    global n, file_names
+    global n, file_names, latency
     if n < len(file_names):
         fixer()
-        set_polygon(sequence2[n])#, sequence3[n])
+        set_polygon(sequence2[n])
+        latency = sequence[n]
     else:
         pass
 
@@ -181,7 +174,8 @@ start = time.time()
 win.push_handlers(resp_handler)
 
 fixer()
-set_polygon(sequence2[0])#, sequence3[0])
+set_polygon(sequence2[0])
+latency = sequence[0]
 
 
 for i in sequence:
@@ -203,6 +197,7 @@ daten = datetime.datetime.now()
 # Write results onto csv
 results = pd.DataFrame({'trial': list(range(1, len(file_names)+1)),  # Store variance_A conditions
                         'cnd': sequence,
+                        'stimulated_eye': sequence2,
                         'response': response, # Store transient_counts
                         'trial_times': trial_times})
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, pyglet, time, datetime, random, copy, math
+import os, pyglet, time, datetime, random, copy
 from pyglet.gl import *
 from pyglet.image import AbstractImage
 from collections import deque
@@ -9,13 +9,12 @@ import display_info
 
 # Prefernce
 # ------------------------------------------------------------------------
-rept = 20
+relative_disparity = display_info.distractor_x
+rept = 1
 exclude_mousePointer = False
-duration = 0.5
-latency = 0.5
 # ------------------------------------------------------------------------
 
-# Get display information
+# Get display informations
 display = pyglet.canvas.get_display()
 screens = display.get_screens()
 win = pyglet.window.Window(style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
@@ -28,11 +27,15 @@ deg1 = display_info.deg1
 cntx = screens[len(screens)-1].width / 2  # Store center of screen about x position
 cnty = screens[len(screens)-1].height / 3  # Store center of screen about y position
 dat = pd.DataFrame()
-iso = 8
+iso = 7.5
 draw_objects = []  # 描画対象リスト
 end_routine = False  # Routine status to be exitable or not
-response = []  # Count transients
-trial_times = []
+tc = 0  # Count transients
+tcs = []  # Store transients per trials
+kud_list = []  # Store durations of key pressed
+cdt = []  # Store sum(kud), cumulative reaction time on a trial.
+mdt = []
+dtstd = []
 exit = True
 n = 0
 
@@ -43,29 +46,9 @@ pedestal: AbstractImage = pyglet.image.load('materials/pedestal.png')
 fixr = pyglet.sprite.Sprite(pedestal, x=cntx+iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 fixl = pyglet.sprite.Sprite(pedestal, x=cntx-iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 
-#file_names = str(copy.copy(display_info.variation))#*rept*2)
-#file_names.append([""]*rept)
-
-#file_names = ["0", "1", "2", "3", "4", "5", "", "", "", "", "", ""]*rept
-#v2 = ["", "", "", "", "", "","0", "1", "2", "3", "4", "5"]*rept
-
-pres_lr = list(np.repeat([1, -1], rept*4))
-file_names = list(np.repeat(["0.5", "1", "2", "4"], rept*2))
-pres_lr = pres_lr*2
-file_names = file_names*2
-#pres = list(np.repeat([1, 0], len(file_names)))
-
-print(file_names)
-print(pres_lr)
-#print(pres)
-
-r = random.randint(0, math.factorial(len(file_names)))
-random.seed(r)
+file_names = copy.copy(relative_disparity)*rept
 sequence = random.sample(file_names, len(file_names))
-random.seed(r)
-sequence2 = random.sample(pres_lr, len(file_names))
-random.seed(r)
-#sequence3 = random.sample(pres, len(file_names))
+print(sequence)
 
 # ----------- Core program following ----------------------------
 
@@ -73,47 +56,49 @@ random.seed(r)
 class key_resp(object):
     def on_key_press(self, symbol, modifiers):
         global tc, exit, trial_start
-        if exitance is False and symbol == key.LEFT: # target in visible
-            response.append(1)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance is False and symbol == key.RIGHT: # target in invisible
-            response.append(0)
-            pyglet.clock.schedule_once(get_results, 0.5)
-        if exitance and symbol == key.UP:
+        if exitance == False and symbol == key.DOWN:
+            kd.append(time.time())
+            tc = tc + 1
+        if exitance == True and symbol == key.UP:
             p_sound.play()
-            pyglet.clock.schedule_once(success, latency)
-            pyglet.clock.schedule_once(delete, duration + latency)
+            exitance = False
+            pyglet.clock.schedule_once(delete, 30.0)
             replace()
             trial_start = time.time()
         if symbol == key.ESCAPE:
             win.close()
             pyglet.app.exit()
 
+    def on_key_release(self, symbol, modifiers):
+        global tc
+        if exit == False and symbol == key.DOWN:
+            ku.append(time.time())
+            tc = tc + 1
+
 
 resp_handler = key_resp()
 
 
+# Store objects into draw_objects
 def fixer():
     draw_objects.append(fixl)
     draw_objects.append(fixr)
 
 
 def replace():
-#    del draw_objects[:]
+    del draw_objects[:]
     fixer()
-    draw_objects.append(preceeder)
-
-
-def success(dt):
-    draw_objects.append(successor)
+    draw_objects.append(R)
+    draw_objects.append(L)
 
 
 # A end routine function
-def exit_routine():
+def exit_routine(dt):
     global exit
     exitance = True
     beep_sound.play()
     prepare_routine()
+    fixer()
     pyglet.app.exit()
 
 
@@ -128,50 +113,65 @@ def on_draw():
 
 # Remove stimulus
 def delete(dt):
-    global n, trial_end, exit
+    global n, trial_end
     del draw_objects[:]
-    fixer()
     p_sound.play()
     n += 1
+    pyglet.clock.schedule_once(get_results, 1.0)
     trial_end = time.time()
-    exitance = False
 
 
 def get_results(dt):
-    global ku, kud, kd, n, response, trial_end, trial_start, sequence, file_names
-    trial_time = trial_end - trial_start
-    trial_times.append(trial_time)
-    print('--------------------------------------------------')
-    print('trial: ' + str(n) + '/' + str(len(file_names)))
-    print('response: ' + str(response[-1]))
-    print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
-#    print('correct: ' + str(sequence3[n-1]))
-    print('--------------------------------------------------')
+    global ku, kud, kd, kud_list, mdt, dtstd, n, tc, tcs, trial_end, trial_start, sequence, file_names
+    ku.append(trial_start + 30.0)
+    while len(kd) > 0:
+        kud.append(ku.popleft() - kd.popleft() + 0)  # list up key_press_duration
+    kud_list.append(str(kud))
+    c = sum(kud)
+    cdt.append(c)
+    tcs.append(tc)
+    if kud == []:
+        kud.append(0)
+    m = np.mean(kud)
+    d = np.std(kud)
+    mdt.append(m)
+    dtstd.append(d)
+    print("--------------------------------------------------")
+    print("trial: " + str(n) + "/" + str(len(file_names)))
+    print("start: " + str(trial_start))
+    print("end: " + str(trial_end))
+    print("key_pressed: " + str(kud))
+    print("transient counts: " + str(tc))
+    print("cdt: " + str(c))
+    print("mdt: " + str(m))
+    print("dtstd: " + str(d))
+    print("condition: " + str(sequence[n - 1]))
+    print("--------------------------------------------------")
     # Check the experiment continue or break
     if n != len(file_names):
-        exit_routine()
+        pyglet.clock.schedule_once(exit_routine, 29.0)
     else:
         pyglet.app.exit()
 
 
-def set_polygon(lr, p):
-    global successor, preceeder, sequence, n
+def set_polygon():
+    global L, R, sequence, n
     # Set up polygon for stimulus
-    successor = pyglet.resource.image('stereograms2/' + str(sequence[n]) + 'ls.png')
-    successor = pyglet.sprite.Sprite(successor)
-    successor.x = cntx + deg1 * iso * lr - successor.width / 2.0
-    successor.y = cnty - successor.height / 2.0
-    preceeder = pyglet.resource.image('stereograms2/ls.png')
-    preceeder = pyglet.sprite.Sprite(preceeder)
-    preceeder.x = cntx - deg1 * iso * lr + 2000*p - preceeder.width / 2.0
-    preceeder.y = cnty - preceeder.height / 2.0
+    R = pyglet.resource.image('stereograms/ls' + str(sequence[n]) + 'R.png')
+    R = pyglet.sprite.Sprite(R)
+    R.x = cntx + deg1 * iso - R.width / 2.0
+    R.y = cnty - R.height / 2.0
+    L = pyglet.resource.image('stereograms/ls' + str(sequence[n]) + 'L.png')
+    L = pyglet.sprite.Sprite(L)
+    L.x = cntx - deg1 * iso - L.width / 2.0
+    L.y = cnty - L.height / 2.0
 
 
 def prepare_routine():
     global n, file_names
     if n < len(file_names):
         fixer()
-        set_polygon(sequence2[n])#, sequence3[n])
+        set_polygon()
     else:
         pass
 
@@ -181,7 +181,7 @@ start = time.time()
 win.push_handlers(resp_handler)
 
 fixer()
-set_polygon(sequence2[0])#, sequence3[0])
+set_polygon()
 
 
 for i in sequence:
@@ -201,10 +201,13 @@ end_time = time.time()
 daten = datetime.datetime.now()
 
 # Write results onto csv
-results = pd.DataFrame({'trial': list(range(1, len(file_names)+1)),  # Store variance_A conditions
-                        'cnd': sequence,
-                        'response': response, # Store transient_counts
-                        'trial_times': trial_times})
+results = pd.DataFrame({'trial': sequence,  # Store variance_A conditions
+                        'image': n,
+                        'transient_counts': tcs,  # Store transient_counts
+                        'cdt': cdt,  # Store cdt(target values) and input number of trials
+                        'mdt': mdt,
+                        'dtstd': dtstd,
+                        'key_press_list': kud_list})  # Store the key_press_duration list
 
 os.makedirs('data', exist_ok=True)
 
