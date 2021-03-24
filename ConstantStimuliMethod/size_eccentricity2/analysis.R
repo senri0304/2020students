@@ -6,7 +6,7 @@
 
 library(ggplot2)
 
-files <- list.files('ConstantStimuliMethod/size_correspondence/data',full.names=T)
+files <- list.files('ConstantStimuliMethod/size_eccentricity2/data',full.names=T)
 f <- length(files)
 
 si <- gsub(".*(..)DATE.*","\\1", files)
@@ -29,53 +29,55 @@ for (i in usi){
   # The y-axis indicates the visibility probability of the target
 
   #キャンバスを用意して、gに格納
-  g <- ggplot(camp, aes(y=response, x=cnd, color=as.character(stimulated_eye))) +
-       stat_summary(aes(cnd, color=as.character(stimulated_eye)),
+  g <- ggplot(camp, aes(y=response, x=eccentricity, color=as.character(cnd))) +
+       stat_summary(aes(eccentricity, color=as.character(cnd)),
                     fun=mean, geom="point") +
        #折れ線グラフを描き入れる
-       stat_summary(aes(cnd), #種類ごとに
+       stat_summary(aes(eccentricity), #種類ごとに
                       fun=mean, #平均値を
                       geom="point",#点で
                       colour="black") +
        #エラーバーの追加
-       stat_summary(aes(cnd),#種類ごとに
+       stat_summary(aes(eccentricity),#種類ごとに
                       fun.data=mean_se,#mean_seで標準誤差、#mean_cl_normalで95%信頼区間(正規分布)
                       geom="errorbar",
                       size=0.5,#線の太さ
                       width=0.1) + #ぴょんって横に出てるアイツの幅
-#       stat_smooth(method = "lm", formula = y~x, fullrange = T, se = T,alpha=0.1) +
+       stat_smooth(method = "lm", formula = y~x, fullrange = T, se = T,alpha=0.1) +
        # 1が左眼、-1が右眼にターゲットを提示する
-       geom_point(aes(color=as.character(stimulated_eye)),
+       geom_point(aes(color=as.character(cnd)),
                   position=position_jitter(width=0.3, height=0.06),
                   alpha=0.4, shape=21) +
-       stat_summary(aes(y=response, x=cnd), fun=mean,
+       stat_summary(aes(y=response, x=eccentricity), fun=mean,
                       geom="line", colour="black") +
-       labs(color='stimulated eye', subtitle=i)
+       labs(color='cnd')
+
   print(g)
 }
 
-temp <- subset(temp, temp$sub!=c('tt'))
-
 # 全体平均
-g <- ggplot(temp, aes(x=cnd, y=response)) +
+g <- ggplot(temp, aes(x=eccentricity, y=response, color=as.character(cnd))) +
             stat_summary(fun=mean, geom="line") +
-            stat_summary(aes(cnd),#種類ごとに
+            stat_summary(aes(eccentricity),#種類ごとに
                          fun.data=mean_se,#mean_seで標準誤差、#mean_cl_normalで95%信頼区間(正規分布)
                          geom="errorbar",
                          size=0.5,#線の太さ
                          width=0.1) +
-            xlab('size')
+            labs(color='size')
 
 g
 
+
 library(tidyr)
 # ANOVA
-df <- aggregate(temp$response, by=temp[c('sub', 'cnd')], FUN=mean)
-df_shaped <- pivot_wider(df, names_from=cnd, values_from=x)
+df <- aggregate(temp$response, by=temp[c('sub', 'cnd', 'eccentricity')], FUN=mean)
+df$eccentricity[df$eccentricity!=1] <- 'double'
+df$eccentricity[df$eccentricity==1] <- 'equal'
+df_shaped <- pivot_wider(df, names_from=c('cnd', 'eccentricity'), values_from=x)
 df_shaped$sub <- NULL
 
 #ANOVA <- aov(x~cnd*eccentricity, df)
 #summary(ANOVA)
 
 source('anovakun_485.txt')
-ANOVA <- anovakun(df_shaped, 'sA', 4, holm=T, peta=T)
+ANOVA <- anovakun(df_shaped, 'sAB', 2, 2, peta=T)

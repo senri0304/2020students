@@ -9,7 +9,7 @@ import display_info
 
 # Prefernce
 # ------------------------------------------------------------------------
-rept = 20
+rept = 2
 exclude_mousePointer = False
 duration = 0.4
 latency = 1.5
@@ -40,23 +40,42 @@ n = 0
 # Load resources
 p_sound = pyglet.resource.media('materials/840Hz.wav', streaming=False)
 beep_sound = pyglet.resource.media('materials/460Hz.wav', streaming=False)
-pedestal: AbstractImage = pyglet.image.load('materials/pedestal.png')
+pedestal: AbstractImage = pyglet.image.load('materials/pedestal1.png')
 fixr = pyglet.sprite.Sprite(pedestal, x=cntx+iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 fixl = pyglet.sprite.Sprite(pedestal, x=cntx-iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 
-file_names = list(np.repeat(display_info.variation, rept))
-file_names *= 2
-pres_lr = list(np.repeat([1, -1], len(file_names)))
+pedestal2: AbstractImage = pyglet.image.load('materials/pedestal2.png')
+fixr2 = pyglet.sprite.Sprite(pedestal2, x=cntx+iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
+fixl2 = pyglet.sprite.Sprite(pedestal2, x=cntx-iso*deg1-pedestal.width/2.0, y=cnty-pedestal.height/2.0)
 
+
+size = [1, 2]
+eccentricity = [1, 2]
+
+#file_names = list(np.repeat(size, rept))
+file_names = size*2*2*2*rept
+supp = [1, 2, 2, 1] * int((len(file_names)/4))
+var = list(np.repeat(eccentricity, len(file_names)/4))
+var *= 2
+test_eye = list(np.repeat([-1, 1], len(var)/2))
+#file_names *= 2
+#supp *= 2
+#var *= 2
 
 r = random.randint(0, math.factorial(len(file_names)))
 random.seed(r)
 sequence = random.sample(file_names, len(file_names))
 random.seed(r)
-sequence2 = random.sample(pres_lr, len(file_names))
+sequence2 = random.sample(var, len(file_names))
+random.seed(r)
+sequence3 = random.sample(test_eye, len(file_names))
+random.seed(r)
+sequence4 = random.sample(supp, len(file_names))
 
 print(sequence)
 print(sequence2)
+print(sequence3)
+print(sequence4)
 
 # A getting key response function
 class key_resp(object):
@@ -85,14 +104,18 @@ class key_resp(object):
 resp_handler = key_resp()
 
 
-def fixer():
-    draw_objects.append(fixl)
-    draw_objects.append(fixr)
+def fixer(seq2):
+    if seq2 != 1:
+        draw_objects.append(fixl2)
+        draw_objects.append(fixr2)
+    else:
+        draw_objects.append(fixl)
+        draw_objects.append(fixr)
 
 
 def replace():
 #    del draw_objects[:]
-    fixer()
+    fixer(sequence2[n])
     draw_objects.append(preceeder)
 
 
@@ -122,7 +145,7 @@ def on_draw():
 def delete(dt):
     global n, trial_end, exit, oneshot
     del draw_objects[:]
-    fixer()
+#    fixer(sequence2[n])
     p_sound.play()
     n += 1
     trial_end = time.time()
@@ -137,7 +160,7 @@ def get_results(dt):
     print('--------------------------------------------------')
     print('trial: ' + str(n) + '/' + str(len(file_names)))
     print('response: ' + str(response[n-1]))
-    print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence2[n-1]))
+    print('condition: ' + str(sequence[n-1]) + ', ' + str(sequence4) + ', ' + str(sequence2[n-1]) + ' ,' + str(sequence3[n-1]))
     print('--------------------------------------------------')
     # Check the experiment continue or break
     if n != len(file_names):
@@ -147,14 +170,14 @@ def get_results(dt):
         pyglet.app.exit()
 
 
-def set_polygon(seq, lr):
+def set_polygon(seq, seq2, seq3, lr):
     global successor, preceeder
     # Set up polygon for stimulus
-    successor = pyglet.resource.image('stereograms/' + str(seq) + 'ls.png')
+    successor = pyglet.resource.image('stereograms/' + str(seq) + str(seq2) + 'ls.png')
     successor = pyglet.sprite.Sprite(successor)
     successor.x = cntx + deg1 * iso * lr - successor.width / 2.0
     successor.y = cnty - successor.height / 2.0
-    preceeder = pyglet.resource.image('stereograms/test.png')
+    preceeder = pyglet.resource.image('stereograms/' + str(seq3) + str(seq2) + 'test.png')
     preceeder = pyglet.sprite.Sprite(preceeder)
     preceeder.x = cntx - deg1 * iso * lr - preceeder.width / 2.0
     preceeder.y = cnty - preceeder.height / 2.0
@@ -163,8 +186,8 @@ def set_polygon(seq, lr):
 def prepare_routine():
     global n, file_names
     if n < len(file_names):
-        fixer()
-        set_polygon(sequence[n], sequence2[n])
+        fixer(sequence2[n])
+        set_polygon(sequence[n], sequence2[n], sequence4[n], sequence3[n])
     else:
         pass
 
@@ -173,8 +196,8 @@ def prepare_routine():
 start = time.time()
 win.push_handlers(resp_handler)
 
-fixer()
-set_polygon(sequence[0], sequence2[0])
+fixer(sequence2[0])
+set_polygon(sequence[0], sequence2[0], sequence4[0], sequence3[0])
 
 
 for i in sequence:
@@ -196,7 +219,8 @@ daten = datetime.datetime.now()
 # Write results onto csv
 results = pd.DataFrame({'trial': list(range(1, len(file_names)+1)),  # Store variance_A conditions
                         'cnd': sequence,
-                        'stimulated_eye': sequence2,
+                        'eccentricity': sequence2,
+                        'test_eye': sequence3,
                         'response': response, # Store transient_counts
                         'trial_times': trial_times})
 
