@@ -24,7 +24,7 @@ for (i in 2:f) {
   temp <- rbind(temp, d)
 }
 
-
+# indivisual data
 for (i in usi){
   camp <- subset(temp, sub==i)
   # The y-axis indicates the visibility probability of the target
@@ -59,34 +59,30 @@ for (i in usi){
 temp <- subset(temp, sub!='tt')
 usi <- usi[-which(usi %in% "tt")]
 
-# 全体平均
-g <- ggplot(temp, aes(x=eccentricity, y=response, color=as.character(cnd))) +
-            stat_summary(fun=mean, geom="line") +
-            stat_summary(aes(eccentricity),#種類ごとに
-                         fun.data=mean_se,#mean_seで標準誤差、#mean_cl_normalで95%信頼区間(正規分布)
-                         geom="errorbar",
-                         size=0.5,#線の太さ
-                         width=0.1) +
-            labs(color='size')
+# responseを反転
+temp$response <- -(temp$response - 1)
 
+# mean
+df <- aggregate(response ~ cnd + eccentricity + sub, temp, FUN=mean)
+g <- ggplot(df, aes(x=eccentricity, y=response, color=as.character(cnd))) +
+  stat_summary(fun='mean', geom="line") +
+  stat_summary(fun="mean", geom = "point", shape = 21, size = 2., fill = "black") +
+  stat_summary(fun.data='mean_se', geom="errorbar", size=0.5, width=0.1) +
+  xlab('eccentricity') + labs('size')
 g
-
-temp$eccentricity[temp$eccentricity!=1] <- 'double'
-temp$eccentricity[temp$eccentricity==1] <- 'equal'
 
 library(tidyr)
 # ANOVA
-df <- aggregate(temp$response, by=temp[c('sub', 'cnd', 'eccentricity')], FUN=mean)
-#df$eccentricity[df$eccentricity!=1] <- 'double'
-#df$eccentricity[df$eccentricity==1] <- 'equal'
-df_shaped <- pivot_wider(df, names_from=c('cnd', 'eccentricity'), values_from=x)
+df$eccentricity[df$eccentricity!=1] <- 'double'
+df$eccentricity[df$eccentricity==1] <- 'equal'
+df_shaped <- pivot_wider(df, names_from=c('cnd', 'eccentricity'), values_from=response)
 df_shaped$sub <- NULL
 
 #ANOVA <- aov(x~cnd*eccentricity, df)
 #summary(ANOVA)
 
-source('anovakun_485.txt')
-ANOVA <- anovakun(df_shaped, 'sAB', 2, 2, peta=T)
+source('ConstantStimuliMethod/anovakun_485.txt')
+capture.output(anovakun(df_shaped, "sAB", 2, 2, holm=T, peta=T), file = "ConstantStimuliMethod/size_eccentricity/output.txt")
 
 
 # 条件間の変化率が大きい眼を検出する

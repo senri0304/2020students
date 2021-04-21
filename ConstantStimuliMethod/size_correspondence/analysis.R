@@ -24,6 +24,9 @@ for (i in 2:f) {
   temp <- rbind(temp, d)
 }
 
+# responseを反転
+temp$response <- -(temp$response - 1)
+
 for (i in usi){
   camp <- subset(temp, sub==i)
   # The y-axis indicates the visibility probability of the target
@@ -54,28 +57,26 @@ for (i in usi){
   print(g)
 }
 
-temp <- subset(temp, temp$sub!=c('tt'))
+temp <- subset(temp, temp$sub!='tt')
 
 # 全体平均
-g <- ggplot(temp, aes(x=cnd, y=response)) +
-            stat_summary(fun=mean, geom="line") +
-            stat_summary(aes(cnd),#種類ごとに
-                         fun.data=mean_se,#mean_seで標準誤差、#mean_cl_normalで95%信頼区間(正規分布)
-                         geom="errorbar",
-                         size=0.5,#線の太さ
-                         width=0.1) +
-            xlab('size')
-
+df <- aggregate(response ~ cnd + sub, temp, FUN=mean)
+g <- ggplot(df, aes(x=cnd, y=response)) +
+  stat_summary(fun=mean, geom="line") +
+  stat_summary(fun = "mean", geom = "point", shape = 21, size = 2., fill = "black") +
+  stat_summary(fun.data='mean_se',#mean_seで標準誤差、#mean_cl_normalで95%信頼区間(正規分布)
+                  geom="errorbar", size=0.5,#線の太さ
+                  width=0.1) + xlab('size')
 g
 
 library(tidyr)
 # ANOVA
-df <- aggregate(temp$response, by=temp[c('sub', 'cnd')], FUN=mean)
-df_shaped <- pivot_wider(df, names_from=cnd, values_from=x)
+df_shaped <- pivot_wider(df, names_from=cnd, values_from=response)
 df_shaped$sub <- NULL
 
 #ANOVA <- aov(x~cnd*eccentricity, df)
 #summary(ANOVA)
 
-source('anovakun_485.txt')
-ANOVA <- anovakun(df_shaped, 'sA', 4, holm=T, peta=T)
+source('ConstantStimuliMethod/anovakun_485.txt')
+#ANOVA <- anovakun(df_shaped, 'sA', 4, holm=T, peta=T)
+capture.output(anovakun(df_shaped, "sA", 4, holm=T, peta=T), file = "ConstantStimuliMethod/size_correspondence/output.txt")
